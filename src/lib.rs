@@ -33,7 +33,11 @@ pub struct MachineBuilder(scryer_prolog::MachineBuilder);
 pub struct Machine(scryer_prolog::Machine);
 pub struct QueryState<'a>(scryer_prolog::QueryState<'a>);
 
-pub struct LeafAnswer(scryer_prolog::LeafAnswer);
+enum LeafAnswerInner {
+    Success(scryer_prolog::LeafAnswer),
+    Error(scryer_prolog::Term),
+}
+pub struct LeafAnswer(LeafAnswerInner);
 pub struct Bindings {}
 pub struct Term(scryer_prolog::Term);
 
@@ -67,12 +71,13 @@ pub extern "C" fn scryer_machine_drop(machine: Box<Machine>) {
 pub unsafe extern "C" fn scryer_machine_run_query<'a>(
     machine: &'a mut Machine,
     query: *const c_char,
-    query_state: &mut *mut QueryState<'a>,
+    query_state: *mut *mut QueryState<'a>,
 ) -> Error {
     let query = unsafe { CStr::from_ptr(query) }.to_str().unwrap();
 
     let query_state_box = Box::new(QueryState(machine.0.run_query(query)));
-    *query_state = Box::into_raw(query_state_box);
+    let query_state_ptr = Box::into_raw(query_state_box);
+    unsafe { *query_state = query_state_ptr };
     Error::Success
 }
 
@@ -94,4 +99,29 @@ pub unsafe extern "C" fn scryer_machine_consult_module_string(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_query_state_drop(query_state: Box<QueryState>) {
     drop(query_state)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_query_state_next_answer(
+    query_state: &mut QueryState,
+    leaf_answer: *mut *mut LeafAnswer,
+) -> Error {
+    let (error, leaf_answer_ptr) = query_state
+        .0
+        .next()
+        .map(|l| match l {
+            Ok(la) => (
+                Error::Success,
+                Box::into_raw(Box::new(LeafAnswer(LeafAnswerInner::Success(la)))),
+            ),
+            Err(error) => (
+                Error::Error,
+                Box::into_raw(Box::new(LeafAnswer(LeafAnswerInner::Error(error)))),
+            ),
+        })
+        .unwrap_or((Error::Success, std::ptr::null_mut()));
+
+    unsafe { *leaf_answer = leaf_answer_ptr };
+
+    error
 }
