@@ -88,3 +88,10 @@ pub unsafe extern "C" fn scryer_machine_consult_module_string(
     machine.0.consult_module_string(module, program);
     Error::Success
 }
+
+// === QueryState methods ===
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_query_state_drop(query_state: Box<QueryState>) {
+    drop(query_state)
+}
