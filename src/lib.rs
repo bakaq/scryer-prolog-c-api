@@ -38,7 +38,7 @@ enum LeafAnswerInner {
     Error(scryer_prolog::Term),
 }
 pub struct LeafAnswer(LeafAnswerInner);
-pub struct Bindings {}
+pub struct Bindings(std::collections::BTreeMap<String, scryer_prolog::Term>);
 pub struct Term(scryer_prolog::Term);
 
 // === MachineBuilder methods ===
@@ -122,6 +122,69 @@ pub unsafe extern "C" fn scryer_query_state_next_answer(
         .unwrap_or((Error::Success, std::ptr::null_mut()));
 
     unsafe { *leaf_answer = leaf_answer_ptr };
+
+    error
+}
+
+// === LeafAnswer methods ===
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_leaf_answer_drop(leaf_answer: Box<LeafAnswer>) {
+    drop(leaf_answer)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_leaf_answer_kind(leaf_answer: &LeafAnswer) -> LeafAnswerKind {
+    match &leaf_answer.0 {
+        LeafAnswerInner::Success(inner) => match inner {
+            scryer_prolog::LeafAnswer::True => LeafAnswerKind::True,
+            scryer_prolog::LeafAnswer::False => LeafAnswerKind::False,
+            scryer_prolog::LeafAnswer::LeafAnswer { .. } => LeafAnswerKind::LeafAnswer,
+            scryer_prolog::LeafAnswer::Exception(_) => LeafAnswerKind::Exception,
+        },
+        LeafAnswerInner::Error(_) => LeafAnswerKind::Exception,
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_leaf_answer_unwrap_exception(
+    leaf_answer: &LeafAnswer,
+    term: *mut *mut Term,
+) -> Error {
+    let (error, term_ptr) = match &leaf_answer.0 {
+        LeafAnswerInner::Success(inner) => match inner {
+            scryer_prolog::LeafAnswer::Exception(e) => {
+                (Error::Success, Box::into_raw(Box::new(Term(e.clone()))))
+            }
+            _ => (Error::Error, std::ptr::null_mut()),
+        },
+        LeafAnswerInner::Error(error) => {
+            (Error::Success, Box::into_raw(Box::new(Term(error.clone()))))
+        }
+    };
+
+    unsafe { *term = term_ptr };
+
+    error
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_leaf_answer_unwrap_bindings(
+    leaf_answer: &LeafAnswer,
+    bindings: *mut *mut Bindings,
+) -> Error {
+    let (error, bindings_ptr) = match &leaf_answer.0 {
+        LeafAnswerInner::Success(inner) => match inner {
+            scryer_prolog::LeafAnswer::LeafAnswer { bindings, .. } => (
+                Error::Success,
+                Box::into_raw(Box::new(Bindings(bindings.clone()))),
+            ),
+            _ => (Error::Error, std::ptr::null_mut()),
+        },
+        LeafAnswerInner::Error(_) => (Error::Error, std::ptr::null_mut()),
+    };
+
+    unsafe { *bindings = bindings_ptr };
 
     error
 }
