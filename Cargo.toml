@@ -1,0 +1,10 @@
+[package]
+name = "scryer-prolog-c-api"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+scryer-prolog = {git = "https://github.com/mthom/scryer-prolog.git"}
