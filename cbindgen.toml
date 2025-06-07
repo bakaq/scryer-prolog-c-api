@@ -1,0 +1,10 @@
+language = "C"
+
+cpp_compat = true
+
+[export]
+prefix = "scryer_"
+
+[enum]
+rename_variants = "ScreamingSnakeCase"
+prefix_with_name = true

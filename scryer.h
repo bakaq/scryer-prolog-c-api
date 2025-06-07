@@ -8,6 +8,7 @@
 typedef enum {
     SCRYER_SUCCESS,
     SCRYER_ERROR,
+    SCRYER_PANIC,
 } scryer_Error;
 
 typedef enum {
