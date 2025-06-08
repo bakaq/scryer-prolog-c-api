@@ -405,3 +405,15 @@ pub unsafe extern "C" fn scryer_term_unwrap_variable(
 
     error
 }
+
+// === Memory management ===
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_string_drop(string: *mut c_char) {
+    drop(unsafe { CString::from_raw(string) })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_list_drop(list: *mut *mut Term, len: usize) {
+    drop(unsafe { Vec::from_raw_parts(list, len, len) })
+}
