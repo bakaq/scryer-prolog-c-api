@@ -1,0 +1,6 @@
+CompileFlags:
+  Add: 
+   - -Wall
+   - -Wextra
+   - -I../..
+   - -L../../target/debug
