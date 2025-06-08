@@ -188,3 +188,30 @@ pub unsafe extern "C" fn scryer_leaf_answer_unwrap_bindings(
 
     error
 }
+
+// === Bindings methods ===
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_bindings_drop(bindings: Box<Bindings>) {
+    drop(bindings)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn scryer_bindings_get(
+    bindings: &Bindings,
+    variable: *const c_char,
+    term: *mut *mut Term,
+) -> Error {
+    let variable_str = unsafe { CStr::from_ptr(variable) }.to_str().unwrap();
+    let (error, term_ptr) = bindings
+        .0
+        .get(variable_str)
+        .map(|term| (Error::Success, Box::into_raw(Box::new(Term(term.clone())))))
+        .unwrap_or((Error::Error, std::ptr::null_mut()));
+
+    unsafe { *term = term_ptr };
+
+    error
+}
+
+// TODO: Iterator?
