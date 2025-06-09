@@ -6,7 +6,6 @@ use std::ffi::{CStr, CString, c_char, c_double};
 pub enum Error {
     Success,
     Error,
-    Panic,
 }
 
 #[repr(C)]
@@ -29,32 +28,64 @@ pub enum TermKind {
     Variable,
 }
 
+/// A builder for a [`Machine`].
 pub struct MachineBuilder(scryer_prolog::MachineBuilder);
+
+/// A Scryer Prolog instance.
 pub struct Machine(scryer_prolog::Machine);
+
+/// A handler for an in-progress query.
+///
+/// It's parent [`Machine`] shouldn't be accessed while this isn't dropped.
 pub struct QueryState<'a>(scryer_prolog::QueryState<'a>);
 
 enum LeafAnswerInner {
     Success(scryer_prolog::LeafAnswer),
     Error(scryer_prolog::Term),
 }
+
+/// A leaf answer.
 pub struct LeafAnswer(LeafAnswerInner);
+
+/// A dictionary of bindings in a leaf answer.
 pub struct Bindings(std::collections::BTreeMap<String, scryer_prolog::Term>);
+
+/// A Prolog Term.
 pub struct Term(scryer_prolog::Term);
 
 // === MachineBuilder methods ===
 
+/// Creates a [`MachineBuilder`] with the default options.
 #[unsafe(no_mangle)]
 pub extern "C" fn scryer_machine_builder_new() -> Box<MachineBuilder> {
     Box::new(MachineBuilder(scryer_prolog::MachineBuilder::new()))
 }
 
+/// Drops a [`MachineBuilder`].
+///
+/// Notice that this shouldn't be called if [`scryer_machine_builder_build`] is called, because the
+/// [`MachineBuilder`] gets consumed in that case.
+///
+/// # Safety
+///
+/// `machine_builder` should point to a [`MachineBuilder`] previously created with
+/// [`scryer_machine_builder_new`].
 #[unsafe(no_mangle)]
-pub extern "C" fn scryer_machine_builder_drop(machine_builder: Box<MachineBuilder>) {
+pub unsafe extern "C" fn scryer_machine_builder_drop(machine_builder: Box<MachineBuilder>) {
     drop(machine_builder)
 }
 
+/// Creates a [`Machine`] from a [`MachineBuilder`].
+///
+/// This consumes the [`MachineBuilder`], so you shouldn't call [`scryer_machine_builder_drop`]
+/// after.
+///
+/// # Safety
+///
+/// `machine_builder` should point to a [`MachineBuilder`] previously created with
+/// [`scryer_machine_builder_new`].
 #[unsafe(no_mangle)]
-pub extern "C" fn scryer_machine_builder_build(
+pub unsafe extern "C" fn scryer_machine_builder_build(
     machine_builder: Box<MachineBuilder>,
 ) -> Box<Machine> {
     Box::new(Machine(machine_builder.0.build()))
@@ -62,11 +93,32 @@ pub extern "C" fn scryer_machine_builder_build(
 
 // === Machine methods ===
 
+/// Drops a [`Machine`].
+///
+/// # Safety
+///
+/// `machine` should point to a [`Machine`] previously created with
+/// [`scryer_machine_builder_build`].
 #[unsafe(no_mangle)]
-pub extern "C" fn scryer_machine_drop(machine: Box<Machine>) {
+pub unsafe extern "C" fn scryer_machine_drop(machine: Box<Machine>) {
     drop(machine)
 }
 
+/// Run a query from a string.
+///
+/// If no error occurs, `query_state` will be updated with a pointer to a [`QueryState`].
+/// This [`Machine`] shoudn't be accessed again until that [`QueryState`] is dropped with
+/// `scryer_query_state_drop`.
+///
+/// # Errors
+///
+/// Currently this function can't error, but this will probably change.
+///
+/// # Safety
+///
+/// - `machine` should point to a [`Machine`] previously created with
+///   [`scryer_machine_builder_build`].
+/// - `query` should be a null-terminated UTF-8 encoded string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_machine_run_query<'a>(
     machine: &'a mut Machine,
@@ -81,14 +133,29 @@ pub unsafe extern "C" fn scryer_machine_run_query<'a>(
     Error::Success
 }
 
+/// Consults a module from a string.
+///
+/// # Errors
+///
+/// Currently this function can't error, but this will probably change.
+///
+/// # Safety
+///
+/// - `machine` should point to a [`Machine`] previously created with
+///   [`scryer_machine_builder_build`].
+/// - `module` and `program` should both be null-terminated UTF-8 encoded strings.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_machine_consult_module_string(
     machine: &mut Machine,
     module: *const c_char,
     program: *const c_char,
 ) -> Error {
-    let module = unsafe { CStr::from_ptr(module) }.to_str().unwrap();
-    let program = unsafe { CStr::from_ptr(program) }.to_str().unwrap();
+    let module = unsafe { CStr::from_ptr(module) }
+        .to_str()
+        .expect("UTF-8 encoding");
+    let program = unsafe { CStr::from_ptr(program) }
+        .to_str()
+        .expect("UTF-8 encoding");
 
     machine.0.consult_module_string(module, program);
     Error::Success
@@ -96,11 +163,30 @@ pub unsafe extern "C" fn scryer_machine_consult_module_string(
 
 // === QueryState methods ===
 
+/// Drops a [`QueryState`].
+///
+/// # Safety
+///
+/// `query_state` should point to a [`QueryState`] previously created with
+/// [`scryer_machine_run_query`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_query_state_drop(query_state: Box<QueryState>) {
     drop(query_state)
 }
 
+/// Get the next leaf answer from the query.
+///
+/// If no error occurs, `leaf_answer` will be updated with a pointer to a [`LeafAnswer`].
+///
+/// # Errors
+///
+/// If an error occurs, then `leaf_answer` will be updated with a pointer to a [`LeafAnswer`] that
+/// contains the error term. It can be unwrapped with [`scryer_leaf_answer_unwrap_exception`].
+///
+/// # Safety
+///
+/// `query_state` should point to a [`QueryState`] previously created with
+///   [`scryer_machine_run_query`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_query_state_next_answer(
     query_state: &mut QueryState,
@@ -128,11 +214,23 @@ pub unsafe extern "C" fn scryer_query_state_next_answer(
 
 // === LeafAnswer methods ===
 
+/// Drops a [`LeafAnswer`].
+///
+/// # Safety
+///
+/// `leaf_answer` should point to a [`LeafAnswer`] previously created with
+/// [`scryer_query_state_next_answer`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_leaf_answer_drop(leaf_answer: Box<LeafAnswer>) {
     drop(leaf_answer)
 }
 
+/// Gets the kind of the [`LeafAnswer`].
+///
+/// # Safety
+///
+/// `leaf_answer` should point to a [`LeafAnswer`] previously created with
+/// [`scryer_query_state_next_answer`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_leaf_answer_kind(leaf_answer: &LeafAnswer) -> LeafAnswerKind {
     match &leaf_answer.0 {
@@ -146,6 +244,19 @@ pub unsafe extern "C" fn scryer_leaf_answer_kind(leaf_answer: &LeafAnswer) -> Le
     }
 }
 
+/// Unwraps an exception term from a [`LeafAnswer`].
+///
+/// On success updates `term` with a pointer to a [`Term`].
+///
+/// # Errors
+///
+/// If the `LeafAnswer` is not an exception, this returns [`Error::Error`]
+/// and updates `term` to a null pointer.
+///
+/// # Safety
+///
+/// `leaf_answer` should point to a [`LeafAnswer`] previously created with
+/// [`scryer_query_state_next_answer`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_leaf_answer_unwrap_exception(
     leaf_answer: &LeafAnswer,
@@ -168,6 +279,19 @@ pub unsafe extern "C" fn scryer_leaf_answer_unwrap_exception(
     error
 }
 
+/// Unwraps the bindings from a [`LeafAnswer`].
+///
+/// On success updates `bindings` with a pointer to a [`Bindings`].
+///
+/// # Errors
+///
+/// If the `LeafAnswer` is not a leaf answer (aka, it's an exception, true or false),
+/// this returns [`Error::Error`] and updates `bindings` to a null pointer.
+///
+/// # Safety
+///
+/// `leaf_answer` should point to a [`LeafAnswer`] previously created with
+/// [`scryer_query_state_next_answer`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_leaf_answer_unwrap_bindings(
     leaf_answer: &LeafAnswer,
@@ -191,11 +315,32 @@ pub unsafe extern "C" fn scryer_leaf_answer_unwrap_bindings(
 
 // === Bindings methods ===
 
+/// Drops a [`Bindings`].
+///
+/// # Safety
+///
+/// `bindings` should point to a [`bindings`] previously created with
+/// [`scryer_leaf_answer_unwrap_bindings`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_bindings_drop(bindings: Box<Bindings>) {
     drop(bindings)
 }
 
+/// Get the term bound to a variable in [`Bindings`].
+///
+/// If the variable specified by `variable` exists in the bindings, succeeds and
+/// updates `term` with a pointer to a [`Term`].
+///
+/// # Errors
+///
+/// If the variable specified doesn't exist in the bindings, this returns
+/// [`Error::Error`] and updates `term` to a null pointer.
+///
+/// # Safety
+///
+/// - `variable` should be a null-terminated UTF-8 encoded string.
+/// - `bindings` should point to a [`bindings`] previously created with
+/// [`scryer_leaf_answer_unwrap_bindings`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_bindings_get(
     bindings: &Bindings,
@@ -218,11 +363,21 @@ pub unsafe extern "C" fn scryer_bindings_get(
 
 // === Term methods ===
 
+/// Drops a [`Term`].
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_drop(term: Box<Term>) {
     drop(term)
 }
 
+/// Gets the kind of a [`Term`].
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_kind(term: &Term) -> TermKind {
     match term.0 {
@@ -238,6 +393,21 @@ pub unsafe extern "C" fn scryer_term_kind(term: &Term) -> TermKind {
     }
 }
 
+/// Unwraps a big integer from a [`Term`].
+///
+/// If `term` is an integer, succeeds and updates `big_integer` with
+///  a null-terminated string representing that integer. This is so that
+/// arbitrary precision can be supported. If you need an actual integer
+/// you should parse this string.
+///
+/// # Errors
+///
+/// If `term` is not an integer, returns [`Error::Error`] and updates
+/// `big_integer` to a null pointer.
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_unwrap_integer(
     term: &Term,
@@ -257,6 +427,18 @@ pub unsafe extern "C" fn scryer_term_unwrap_integer(
     error
 }
 
+/// Unwraps a float from a [`Term`].
+///
+/// If `term` is a float, succeeds and updates `scryer_float` with it's value.
+///
+/// # Errors
+///
+/// If `term` is not a float, returns [`Error::Error`] and updates
+/// `scryer_float` to `0.0`.
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_unwrap_float(
     term: &Term,
@@ -273,6 +455,19 @@ pub unsafe extern "C" fn scryer_term_unwrap_float(
     error
 }
 
+/// Unwraps a rational from a [`Term`].
+///
+/// If `term` is a rational, succeeds and updates `numerator` and `denominator`
+/// with a strings representing their values, like in [`scryer_term_unwrap_integer`].
+///
+/// # Errors
+///
+/// If `term` is not a rational, returns [`Error::Error`] and updates
+/// `numerator` and `denominator` to a null pointers.
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_unwrap_rational(
     term: &Term,
@@ -297,6 +492,19 @@ pub unsafe extern "C" fn scryer_term_unwrap_rational(
     error
 }
 
+/// Unwraps an atom from a [`Term`].
+///
+/// If `term` is an atom, succeeds and updates `atom` with
+/// a null terminated string with it's contents.
+///
+/// # Errors
+///
+/// If `term` is not an atom, returns [`Error::Error`] and updates
+/// `atom` to a null pointer.
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_unwrap_atom(term: &Term, atom: *mut *mut c_char) -> Error {
     let (error, atom_ptr) = if let scryer_prolog::Term::Atom(a) = &term.0 {
@@ -310,6 +518,19 @@ pub unsafe extern "C" fn scryer_term_unwrap_atom(term: &Term, atom: *mut *mut c_
     error
 }
 
+/// Unwraps a string from a [`Term`].
+///
+/// If `term` is a string, succeeds and updates `string` with
+/// a null terminated string with it's contents.
+///
+/// # Errors
+///
+/// If `term` is not a string, returns [`Error::Error`] and updates
+/// `string` to a null pointer.
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_unwrap_string(term: &Term, string: *mut *mut c_char) -> Error {
     let (error, string_ptr) = if let scryer_prolog::Term::String(s) = &term.0 {
@@ -323,6 +544,22 @@ pub unsafe extern "C" fn scryer_term_unwrap_string(term: &Term, string: *mut *mu
     error
 }
 
+/// Unwraps a list from a [`Term`].
+///
+/// If `term` is a list, succeeds and updates `term_list` with
+/// a pointer to a buffer containing pointers to terms, and `len`
+/// to the number of terms in that buffer.
+///
+/// This buffer needs to be dropped with `scryer_list_drop`.
+///
+/// # Errors
+///
+/// If `term` is not a list, returns [`Error::Error`], updates
+/// `term_list` to a null pointer and `len` to 0.
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_unwrap_list(
     term: &Term,
@@ -354,6 +591,23 @@ pub unsafe extern "C" fn scryer_term_unwrap_list(
     error
 }
 
+/// Unwraps a compound from a [`Term`].
+///
+/// If `term` is a compound, succeeds and updates `functor` with
+/// a null terminated string with the contents of the functor,
+/// `args` with a buffer with containing pointers to terms, and
+/// `len` to the number of terms in that buffer.
+///
+/// `args` needs to be dropped with `scryer_list_drop`.
+///
+/// # Errors
+///
+/// If `term` is not a compound, returns [`Error::Error`], updates
+/// `functor` and `args` to a null pointers, and `len` to 0.
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_unwrap_compound(
     term: &Term,
@@ -390,6 +644,19 @@ pub unsafe extern "C" fn scryer_term_unwrap_compound(
     error
 }
 
+/// Unwraps a variable from a [`Term`].
+///
+/// If `term` is a variable, succeeds and updates `variable` with
+/// a null terminated variable with it's name.
+///
+/// # Errors
+///
+/// If `term` is not a variable, returns [`Error::Error`] and updates
+/// `variable` to a null pointer.
+///
+/// # Safety
+///
+/// `term` should point to a [`Term`] previously created by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_term_unwrap_variable(
     term: &Term,
@@ -408,11 +675,25 @@ pub unsafe extern "C" fn scryer_term_unwrap_variable(
 
 // === Memory management ===
 
+/// Drop a previously allocated string.
+///
+/// # Safety
+///
+/// `string` should be a string previously allocated by Scryer Prolog.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_string_drop(string: *mut c_char) {
     drop(unsafe { CString::from_raw(string) })
 }
 
+/// Drop a previously allocated list.
+///
+/// This only frees the memory for the list itself. The elements it contains should be dropped
+/// first separatelly.
+///
+/// # Safety
+///
+/// `list` should be a list previously created with [`scryer_term_unwrap_list`], and `len` should
+/// be it's length.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_list_drop(list: *mut *mut Term, len: usize) {
     drop(unsafe { Vec::from_raw_parts(list, len, len) })
