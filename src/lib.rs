@@ -63,13 +63,13 @@ pub extern "C" fn scryer_machine_builder_new() -> Box<MachineBuilder> {
 
 /// Drops a [`MachineBuilder`].
 ///
-/// Notice that this shouldn't be called if [`scryer_machine_builder_build`] is called, because the
-/// [`MachineBuilder`] gets consumed in that case.
+/// Notice that this shouldn't be called if [`scryer_machine_builder_build`] is
+/// called, because the [`MachineBuilder`] gets consumed in that case.
 ///
 /// # Safety
 ///
-/// `machine_builder` should point to a [`MachineBuilder`] previously created with
-/// [`scryer_machine_builder_new`].
+/// `machine_builder` should point to a [`MachineBuilder`] previously created
+/// with [`scryer_machine_builder_new`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_machine_builder_drop(machine_builder: Box<MachineBuilder>) {
     drop(machine_builder)
@@ -77,13 +77,13 @@ pub unsafe extern "C" fn scryer_machine_builder_drop(machine_builder: Box<Machin
 
 /// Creates a [`Machine`] from a [`MachineBuilder`].
 ///
-/// This consumes the [`MachineBuilder`], so you shouldn't call [`scryer_machine_builder_drop`]
-/// after.
+/// This consumes the [`MachineBuilder`], so you shouldn't call
+/// [`scryer_machine_builder_drop`] after.
 ///
 /// # Safety
 ///
-/// `machine_builder` should point to a [`MachineBuilder`] previously created with
-/// [`scryer_machine_builder_new`].
+/// `machine_builder` should point to a [`MachineBuilder`] previously created
+/// with [`scryer_machine_builder_new`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_machine_builder_build(
     machine_builder: Box<MachineBuilder>,
@@ -106,9 +106,9 @@ pub unsafe extern "C" fn scryer_machine_drop(machine: Box<Machine>) {
 
 /// Run a query from a string.
 ///
-/// If no error occurs, `query_state` will be updated with a pointer to a [`QueryState`].
-/// This [`Machine`] shoudn't be accessed again until that [`QueryState`] is dropped with
-/// `scryer_query_state_drop`.
+/// If no error occurs, `query_state` will be updated with a pointer to a
+/// [`QueryState`]. This [`Machine`] shoudn't be accessed again until that
+/// [`QueryState`] is dropped with `scryer_query_state_drop`.
 ///
 /// # Errors
 ///
@@ -117,8 +117,8 @@ pub unsafe extern "C" fn scryer_machine_drop(machine: Box<Machine>) {
 /// # Safety
 ///
 /// - `machine` should point to a [`Machine`] previously created with
-///   [`scryer_machine_builder_build`].
-/// - `query` should be a null-terminated UTF-8 encoded string.
+/// [`scryer_machine_builder_build`]. - `query` should be a null-terminated
+/// UTF-8 encoded string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_machine_run_query<'a>(
     machine: &'a mut Machine,
@@ -142,8 +142,8 @@ pub unsafe extern "C" fn scryer_machine_run_query<'a>(
 /// # Safety
 ///
 /// - `machine` should point to a [`Machine`] previously created with
-///   [`scryer_machine_builder_build`].
-/// - `module` and `program` should both be null-terminated UTF-8 encoded strings.
+/// [`scryer_machine_builder_build`]. - `module` and `program` should both be
+/// null-terminated UTF-8 encoded strings.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_machine_consult_module_string(
     machine: &mut Machine,
@@ -176,12 +176,14 @@ pub unsafe extern "C" fn scryer_query_state_drop(query_state: Box<QueryState>) {
 
 /// Get the next leaf answer from the query.
 ///
-/// If no error occurs, `leaf_answer` will be updated with a pointer to a [`LeafAnswer`].
+/// If no error occurs, `leaf_answer` will be updated with a pointer to a
+/// [`LeafAnswer`].
 ///
 /// # Errors
 ///
-/// If an error occurs, then `leaf_answer` will be updated with a pointer to a [`LeafAnswer`] that
-/// contains the error term. It can be unwrapped with [`scryer_leaf_answer_unwrap_exception`].
+/// If an error occurs, then `leaf_answer` will be updated with a pointer to
+/// a [`LeafAnswer`] that contains the error term. It can be unwrapped with
+/// [`scryer_leaf_answer_unwrap_exception`].
 ///
 /// # Safety
 ///
@@ -250,8 +252,8 @@ pub unsafe extern "C" fn scryer_leaf_answer_kind(leaf_answer: &LeafAnswer) -> Le
 ///
 /// # Errors
 ///
-/// If the `LeafAnswer` is not an exception, this returns [`Error::Error`]
-/// and updates `term` to a null pointer.
+/// If the `LeafAnswer` is not an exception, this returns [`Error::Error`] and
+/// updates `term` to a null pointer.
 ///
 /// # Safety
 ///
@@ -285,8 +287,9 @@ pub unsafe extern "C" fn scryer_leaf_answer_unwrap_exception(
 ///
 /// # Errors
 ///
-/// If the `LeafAnswer` is not a leaf answer (aka, it's an exception, true or false),
-/// this returns [`Error::Error`] and updates `bindings` to a null pointer.
+/// If the `LeafAnswer` is not a leaf answer (aka, it's an exception, true
+/// or false), this returns [`Error::Error`] and updates `bindings` to a null
+/// pointer.
 ///
 /// # Safety
 ///
@@ -338,8 +341,8 @@ pub unsafe extern "C" fn scryer_bindings_drop(bindings: Box<Bindings>) {
 ///
 /// # Safety
 ///
-/// - `variable` should be a null-terminated UTF-8 encoded string.
-/// - `bindings` should point to a [`bindings`] previously created with
+/// - `variable` should be a null-terminated UTF-8 encoded string. -
+/// `bindings` should point to a [`bindings`] previously created with
 /// [`scryer_leaf_answer_unwrap_bindings`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_bindings_get(
@@ -395,10 +398,10 @@ pub unsafe extern "C" fn scryer_term_kind(term: &Term) -> TermKind {
 
 /// Unwraps a big integer from a [`Term`].
 ///
-/// If `term` is an integer, succeeds and updates `big_integer` with
-///  a null-terminated string representing that integer. This is so that
-/// arbitrary precision can be supported. If you need an actual integer
-/// you should parse this string.
+/// If `term` is an integer, succeeds and updates `big_integer` with  a
+/// null-terminated string representing that integer. This is so that arbitrary
+/// precision can be supported. If you need an actual integer you should parse
+/// this string.
 ///
 /// # Errors
 ///
@@ -457,8 +460,9 @@ pub unsafe extern "C" fn scryer_term_unwrap_float(
 
 /// Unwraps a rational from a [`Term`].
 ///
-/// If `term` is a rational, succeeds and updates `numerator` and `denominator`
-/// with a strings representing their values, like in [`scryer_term_unwrap_integer`].
+/// If `term` is a rational, succeeds and updates `numerator` and
+/// `denominator` with a strings representing their values, like in
+/// [`scryer_term_unwrap_integer`].
 ///
 /// # Errors
 ///
@@ -494,13 +498,13 @@ pub unsafe extern "C" fn scryer_term_unwrap_rational(
 
 /// Unwraps an atom from a [`Term`].
 ///
-/// If `term` is an atom, succeeds and updates `atom` with
-/// a null terminated string with it's contents.
+/// If `term` is an atom, succeeds and updates `atom` with a null terminated
+/// string with it's contents.
 ///
 /// # Errors
 ///
-/// If `term` is not an atom, returns [`Error::Error`] and updates
-/// `atom` to a null pointer.
+/// If `term` is not an atom, returns [`Error::Error`] and updates `atom` to a
+/// null pointer.
 ///
 /// # Safety
 ///
@@ -520,13 +524,13 @@ pub unsafe extern "C" fn scryer_term_unwrap_atom(term: &Term, atom: *mut *mut c_
 
 /// Unwraps a string from a [`Term`].
 ///
-/// If `term` is a string, succeeds and updates `string` with
-/// a null terminated string with it's contents.
+/// If `term` is a string, succeeds and updates `string` with a null terminated
+/// string with it's contents.
 ///
 /// # Errors
 ///
-/// If `term` is not a string, returns [`Error::Error`] and updates
-/// `string` to a null pointer.
+/// If `term` is not a string, returns [`Error::Error`] and updates `string` to
+/// a null pointer.
 ///
 /// # Safety
 ///
@@ -546,16 +550,16 @@ pub unsafe extern "C" fn scryer_term_unwrap_string(term: &Term, string: *mut *mu
 
 /// Unwraps a list from a [`Term`].
 ///
-/// If `term` is a list, succeeds and updates `term_list` with
-/// a pointer to a buffer containing pointers to terms, and `len`
-/// to the number of terms in that buffer.
+/// If `term` is a list, succeeds and updates `term_list` with a pointer to a
+/// buffer containing pointers to terms, and `len` to the number of terms in
+/// that buffer.
 ///
 /// This buffer needs to be dropped with `scryer_list_drop`.
 ///
 /// # Errors
 ///
-/// If `term` is not a list, returns [`Error::Error`], updates
-/// `term_list` to a null pointer and `len` to 0.
+/// If `term` is not a list, returns [`Error::Error`], updates `term_list` to a
+/// null pointer and `len` to 0.
 ///
 /// # Safety
 ///
@@ -593,17 +597,17 @@ pub unsafe extern "C" fn scryer_term_unwrap_list(
 
 /// Unwraps a compound from a [`Term`].
 ///
-/// If `term` is a compound, succeeds and updates `functor` with
-/// a null terminated string with the contents of the functor,
-/// `args` with a buffer with containing pointers to terms, and
-/// `len` to the number of terms in that buffer.
+/// If `term` is a compound, succeeds and updates `functor` with a null
+/// terminated string with the contents of the functor, `args` with a buffer
+/// with containing pointers to terms, and `len` to the number of terms in that
+/// buffer.
 ///
 /// `args` needs to be dropped with `scryer_list_drop`.
 ///
 /// # Errors
 ///
-/// If `term` is not a compound, returns [`Error::Error`], updates
-/// `functor` and `args` to a null pointers, and `len` to 0.
+/// If `term` is not a compound, returns [`Error::Error`], updates `functor` and
+/// `args` to a null pointers, and `len` to 0.
 ///
 /// # Safety
 ///
@@ -646,13 +650,13 @@ pub unsafe extern "C" fn scryer_term_unwrap_compound(
 
 /// Unwraps a variable from a [`Term`].
 ///
-/// If `term` is a variable, succeeds and updates `variable` with
-/// a null terminated variable with it's name.
+/// If `term` is a variable, succeeds and updates `variable` with a null
+/// terminated variable with it's name.
 ///
 /// # Errors
 ///
-/// If `term` is not a variable, returns [`Error::Error`] and updates
-/// `variable` to a null pointer.
+/// If `term` is not a variable, returns [`Error::Error`] and updates `variable`
+/// to a null pointer.
 ///
 /// # Safety
 ///
@@ -687,13 +691,13 @@ pub unsafe extern "C" fn scryer_string_drop(string: *mut c_char) {
 
 /// Drop a previously allocated list.
 ///
-/// This only frees the memory for the list itself. The elements it contains should be dropped
-/// first separatelly.
+/// This only frees the memory for the list itself. The elements it contains
+/// should be dropped first separatelly.
 ///
 /// # Safety
 ///
-/// `list` should be a list previously created with [`scryer_term_unwrap_list`], and `len` should
-/// be it's length.
+/// `list` should be a list previously created with [`scryer_term_unwrap_list`],
+/// and `len` should be it's length.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_list_drop(list: *mut *mut Term, len: usize) {
     drop(unsafe { Vec::from_raw_parts(list, len, len) })
