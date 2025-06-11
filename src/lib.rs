@@ -1,30 +1,52 @@
-#![allow(dead_code)]
+#![deny(missing_docs)]
+
+//! C embedding API for Scryer Prolog
+//!
+//! To get started, you need to create a [`MachineBuilder`] to create a
+//! [`Machine`].
 
 use std::ffi::{CStr, CString, c_char, c_double};
 
+/// An error that can be returned from this API.
 #[repr(C)]
 pub enum Error {
+    /// The call succeeded.
     Success,
+    /// The call failed.
     Error,
 }
 
+/// The kind of a leaf answer.
 #[repr(C)]
 pub enum LeafAnswerKind {
+    /// The query succeeded without bindings.
     True,
+    /// The query failed.
     False,
+    /// The query succeeded with bindings.
     LeafAnswer,
+    /// An exception occurred.
     Exception,
 }
 
+/// The kind of a term.
 #[repr(C)]
 pub enum TermKind {
+    /// The term is an integer.
     Integer,
+    /// The term is a rational.
     Rational,
+    /// The term is a float.
     Float,
+    /// The term is an atom.
     Atom,
+    /// The term is a string.
     String,
+    /// The term is a list.
     List,
+    /// The term is a compound
     Compound,
+    /// The term is a variable.
     Variable,
 }
 
@@ -117,8 +139,9 @@ pub unsafe extern "C" fn scryer_machine_drop(machine: Box<Machine>) {
 /// # Safety
 ///
 /// - `machine` should point to a [`Machine`] previously created with
-/// [`scryer_machine_builder_build`]. - `query` should be a null-terminated
-/// UTF-8 encoded string.
+///   [`scryer_machine_builder_build`].
+/// - `query` should be a null-terminated
+///   UTF-8 encoded string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_machine_run_query<'a>(
     machine: &'a mut Machine,
@@ -142,8 +165,9 @@ pub unsafe extern "C" fn scryer_machine_run_query<'a>(
 /// # Safety
 ///
 /// - `machine` should point to a [`Machine`] previously created with
-/// [`scryer_machine_builder_build`]. - `module` and `program` should both be
-/// null-terminated UTF-8 encoded strings.
+///   [`scryer_machine_builder_build`].
+/// - `module` and `program` should both be
+///   null-terminated UTF-8 encoded strings.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_machine_consult_module_string(
     machine: &mut Machine,
@@ -341,9 +365,9 @@ pub unsafe extern "C" fn scryer_bindings_drop(bindings: Box<Bindings>) {
 ///
 /// # Safety
 ///
-/// - `variable` should be a null-terminated UTF-8 encoded string. -
-/// `bindings` should point to a [`bindings`] previously created with
-/// [`scryer_leaf_answer_unwrap_bindings`].
+/// - `variable` should be a null-terminated UTF-8 encoded string.
+/// - `bindings` should point to a [`bindings`] previously created with
+///   [`scryer_leaf_answer_unwrap_bindings`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn scryer_bindings_get(
     bindings: &Bindings,
